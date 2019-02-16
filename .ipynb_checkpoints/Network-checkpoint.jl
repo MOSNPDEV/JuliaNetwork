@@ -43,7 +43,7 @@ end
 # network: The network which is being trained.
 mutable struct MiniBatchUpdate
     num_layers::Int
-    updates::Array{LayerUpdate,1}
+    updates::Array{LayerUpdate, 1}
     function MiniBatchUpdate(network::NeuralNetwork)
         updates = []
         for layer in network.layers
@@ -163,18 +163,32 @@ end
 # batch_size: The number of samples in each batch.
 # network: The network which is being trained.
 # alpha: The learning rate which scales the adjustment of the parameters.
-function train_network(cycles::Int, batch_size::Int, network::NeuralNetwork, α::Float64=0.001)
+function train_network(cycles::Int, batch_size::Int, network::NeuralNetwork, training_data::Array{Float64,3}, training_data_labels::Array{Int64,1}, 
+        α::Float64=0.001, training_set_size::Int=60000, num_categories::Int=10)    
     for i in 1:cycles
-        current_batch = []
-        current_batch_labels = []
-        for j in 1:batch_size
-            rnd = floor(Int,  rand() * 59999) + 1
-            push!(current_batch, vcat(train_x[:, :, rnd]...))
-            push!(current_batch_labels, target_vector(train_y[rnd], 10))
-        end
+        current_batch, current_batch_labels = build_batch(batch_size, training_data, training_data_labels)        
         batch_update = execute_minibatch(current_batch, current_batch_labels, network)
         network = update_network(α, batch_update, network)
     end
 
     return network
+end
+
+# Returns an array with input vectors and and array with labels in order to perform stochastic gradient descent.
+# batch_size: Number of input vectors which are fed before the network is updated.
+# training_data: The training data from which it is randomly sampled.
+# training_data_labels: The respective label for each input.
+# training_set_size: The number of samples in the training_data set.
+# num_categories: The number of different labels.
+function build_batch(batch_size::Int, training_data::Array{Float64,3}, training_data_labels::Array{Int64,1}, 
+        training_set_size::Int=60000, num_categories::Int=10)
+    current_batch = []
+    current_batch_labels = []
+    for j in 1:batch_size
+        rnd = ceil(Int,  rand() * training_set_size)
+        push!(current_batch, vcat(training_data[:, :, rnd]...))
+        push!(current_batch_labels, target_vector(training_data_labels[rnd], num_categories))
+    end
+    
+    return current_batch, current_batch_labels    
 end
